@@ -1,13 +1,37 @@
-DebugMode :: true;
-
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * structs and enums 
+ */
 LogType :: enum u32 {
     DEBUG;
     INFO;
     WARNING;
     ERROR;
-    FATAL;
+    PANIC;
 }
 
+Machine :: enum u32 {
+    SERVER;
+    CLIENT;
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * global constants 
+ */
+DebugMode :: true;
+
+address :: "127.0.0.1";
+
+port : u16 : 6969;
+
+// This is the maximum size for the http header. This value is the same as the default value
+// in the Apache http server, so I figure it is good enough here. It should be enought to parse
+// any header value in the first recv() read. For example, we need to know in advance the
+// `Content-Length` value so we can properly stop reading the message in the server.
+max_header_size :: 8190;
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * functions
+ */
 log :: (type: LogType, msg: string, args: ..Any) {
     if type == {
     case .DEBUG;  if !DebugMode {return;}; 
@@ -15,13 +39,90 @@ log :: (type: LogType, msg: string, args: ..Any) {
     case .INFO;    print("INFO:    ");
     case .ERROR;   print("ERROR:   ");
     case .WARNING; print("WARNING: ");
-    case .FATAL;   print("FATAL:   ");
+    case .PANIC;   print("PANIC:   ");
     }
     print(msg, ..args);
     print("\n");
 }
 
 panic :: (msg: string, args: ..Any) {
-    log(.FATAL, msg, ..args); 
+    log(.PANIC, msg, ..args); 
     exit(1);
+}
+
+// return socket or panic if fail
+connect :: (to: Machine) -> Socket {
+    if !socket_init() panic("Could not initialize socket."); // needed by Windows
+    s := socket(AF_INET, .SOCK_STREAM, 0);
+    if s < 0 panic("Could not initialize socket (%).", s);
+
+    if to == .SERVER {
+        b := bind(s, address, port, AF_INET);
+        if b < 0 panic("Could not initialize socket (%).", b);
+        
+        l := listen(s, 10); 
+        if l < 0 panic("Could not listen properly (%).", l);
+    }
+    else if to == .CLIENT {
+        sa: sockaddr_in;
+        sa.sin_family = AF_INET;
+        c_address := to_c_string(address);
+        defer free(c_address);
+        addr := inet_addr(c_address);
+        #if OS == .WINDOWS {
+            sa.sin_addr.S_un.S_addr = addr;
+        } else {
+            sa.sin_addr.s_addr = addr;
+        }
+        sa.sin_port = htons(port);
+
+        c := connect(s, cast(*sockaddr)*sa, size_of(type_of(sa)));
+        if c < 0 panic("Could not connect (%).\n", c);
+    }
+    else {
+        panic("Could not connect to machine. It must be client or server.");
+    }
+    return s;
+}
+
+send :: (s: Socket, msg: string) {
+    buf := sprint("GET / HTTP/1.1\r\nHost: 127.0.0.1:6969\r\nConnection: close\r\nContent-Length: 4\r\nContent-Type: text/plain\r\n\r\n%", msg);
+    w := send(s, buf.data, xx (buf.count+1), .OOB);  // +1 to account c string null terminator
+    if w < 0 panic("Could not send data (%)\n", w);  // TODO: do not crash. Report error and continue
+}
+
+read_from_client :: (s: Socket, sb: String_Builder) -> string {
+    bytes_received: s64;
+    res_buff: [max_header_size]u8;
+    len := 0;
+    while true {
+        bytes_received = recv(s, res_buff.data, res_buff.count-1, 0);
+        if len == 0 {
+            len = 19; // TODO: parse Content-Length value from header
+        }
+        res_buff[bytes_received] = #char "\0";
+        print_to_builder(*sb, to_string(res_buff.data));
+        if bytes_received => len || bytes_received <= 0 break;
+    }
+    str := builder_to_string(*sb);
+    return str;
+}
+
+read_from_server :: (s: Socket) -> string {
+    sb: String_Builder;
+    bytes_received: s64;
+    res_buff: [max_header_size]u8;
+    while true {
+        bytes_received = recv(s, res_buff.data, res_buff.count-1, 0);
+        if bytes_received <= 0 break;
+        res_buff[bytes_received] = #char "\0";
+        print_to_builder(*sb, to_string(res_buff.data));
+    }
+    return builder_to_string(*sb);
+}
+
+parse_response_data :: (data: string) -> string {
+    found, remainder := contains(data, "\r\n\r\n");
+    if !found remainder = "";
+    return remainder;
 }
