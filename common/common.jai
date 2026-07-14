@@ -86,26 +86,30 @@ connect :: (to: Machine) -> Socket {
 }
 
 send :: (s: Socket, msg: string) {
-    buf := sprint("GET / HTTP/1.1\r\nHost: 127.0.0.1:6969\r\nConnection: close\r\nContent-Length: 4\r\nContent-Type: text/plain\r\n\r\n%", msg);
-    w := send(s, buf.data, xx (buf.count+1), .OOB);  // +1 to account c string null terminator
-    if w < 0 panic("Could not send data (%)\n", w);  // TODO: do not crash. Report error and continue
+    buf := sprint("GET / HTTP/1.1\r\nHost: 127.0.0.1:6969\r\nConnection: close\r\nContent-Length: %\r\nContent-Type: text/plain\r\n\r\n%", msg.count, msg);
+    w := send(s, buf.data, xx (buf.count+1), .OOB);
+    if w < 0 {
+        log(.ERROR, "Could not send data (%)\n", w);
+    }
 }
 
-read_from_client :: (s: Socket, sb: String_Builder) -> string {
+// read_from_client :: (s: Socket, sb: String_Builder) -> string {
+read_from_client :: (s: Socket) -> string {
+    sb: String_Builder;
     bytes_received: s64;
     res_buff: [max_header_size]u8;
     len := 0;
     while true {
         bytes_received = recv(s, res_buff.data, res_buff.count-1, 0);
         if len == 0 {
-            len = 19; // TODO: parse Content-Length value from header
+            value := to_integer(parse_http_head_value(to_string(res_buff.data), "Content-Length:"));
+            len = value; // TODO: parse Content-Length value from header
         }
         res_buff[bytes_received] = #char "\0";
         print_to_builder(*sb, to_string(res_buff.data));
         if bytes_received => len || bytes_received <= 0 break;
     }
-    str := builder_to_string(*sb);
-    return str;
+    return builder_to_string(*sb);
 }
 
 read_from_server :: (s: Socket) -> string {
@@ -125,4 +129,14 @@ parse_response_data :: (data: string) -> string {
     found, remainder := contains(data, "\r\n\r\n");
     if !found remainder = "";
     return remainder;
+}
+
+parse_http_head_value :: (header: string, prop: string) -> string{
+    start := find_index_from_left(header, prop);
+    start += prop.count;
+    end := find_index_from_left(header, "\r\n", start);
+    str_num : []u8;
+    str_num.data = *header.data[start];
+    str_num.count = end - start;
+    return to_string(str_num.data);
 }

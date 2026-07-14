@@ -10,27 +10,16 @@ main :: () {
         log(.DEBUG, "client % connected from %", client_fd, to_string(sock_addr));
         
         log(.INFO, "Reading data from client...");
-        sb: String_Builder;
-        data := read_from_client(client_fd, sb);
+        data := read_from_client(client_fd);
         defer free(data);
         body := parse_response_data(data);
         log(.DEBUG, "Body: %", body);
         
-        // response
+        // send response
         response_body := "Hello from http server";
+        content := sprint("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %\r\nConnection: close\r\n\r\n%", response_body.count, response_body);
+        write(client_fd, content.data, xx content.count);
 
-        reset(*sb);
-        print_to_builder(*sb,"HTTP/1.1 200 OK\r\n");
-        print_to_builder(*sb, "Content-Type: text/plain\r\n");
-        print_to_builder(*sb, "Content-Length: %\r\n", response_body.count);
-        print_to_builder(*sb, "Connection: close\r\n");
-        print_to_builder(*sb, "\r\n");
-        print_to_builder(*sb, "%", response_body);
-
-        res := builder_to_string(*sb);
-        defer free(res);
-
-        write(client_fd, res.data, xx res.count);
         close(client_fd);
     }
 }

@@ -8,6 +8,7 @@ main :: () {
     log(.INFO, "Reading response from server...");
     data := read_from_server(s);
     body := parse_response_data(data);
+    defer free(body);
     log(.DEBUG, "Body: %", body);
 }
 
