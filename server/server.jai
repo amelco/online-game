@@ -1,14 +1,14 @@
 buffer_size :: 1024;
 
 main :: () {
-    ok, s := Connect.open(address, port);
+    ok, s := Connect.open(server_address, server_port);
     defer Connect.close(s);
     if !ok {
         Log.panic("Could not connect to server");
     }
     ok = Connect.listen(s);
 
-    Log.info("Listening to %:%...", address, port);
+    Log.info("Listening to %:%...", server_address, server_port);
     while true {
         ok, client_fd, sock_addr := Connect.accept(s); 
         if !ok {

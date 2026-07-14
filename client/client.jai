@@ -1,5 +1,5 @@
 main :: () {
-    ok, s: = Connect.open(address, port);
+    ok, s: = Connect.open(server_address, server_port);
     defer Connect.close(s);
     if !ok {
         Log.panic("Could not connect to server");
@@ -10,7 +10,7 @@ main :: () {
         Log.panic("Could not connect to server");
     }
     
-    Log.info("Connected to %:%", address, port);
+    Log.info("Connected to %:%", server_address, server_port);
 
     ok = Connect.send(s, "Hello from CLIENT!");
     if !ok {
