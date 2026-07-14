@@ -2,23 +2,22 @@ buffer_size :: 1024;
 
 main :: () {
     s := connect(.SERVER);
-    log(.INFO, "Listening to %:%...", address, port);
+    Log.info("Listening to %:%...", address, port);
     defer close(s);
 
     while true {
         client_fd, sock_addr := accept(s); 
-        log(.DEBUG, "client % connected from %", client_fd, to_string(sock_addr));
+        Log.debug("client % connected from %", client_fd, to_string(sock_addr));
         
-        log(.INFO, "Reading data from client...");
+        // wait until client sends a message
+        Log.info("Reading data from client...");
         data := read_from_client(client_fd);
         defer free(data);
         body := parse_response_data(data);
-        log(.DEBUG, "Body: %", body);
+        Log.debug("Body: %", body);
         
         // send response
-        response_body := "Hello from http server";
-        content := sprint("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: %\r\nConnection: close\r\n\r\n%", response_body.count, response_body);
-        write(client_fd, content.data, xx content.count);
+        send(client_fd, "Hello from http server");
 
         close(client_fd);
     }
@@ -28,5 +27,6 @@ main :: () {
 #import "Socket";
 #import "String";
 #import "POSIX";
+Log :: #import "Log";
 
 #load "../common/common.jai";

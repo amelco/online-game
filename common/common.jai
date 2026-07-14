@@ -1,13 +1,6 @@
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * structs and enums 
  */
-LogType :: enum u32 {
-    DEBUG;
-    INFO;
-    WARNING;
-    ERROR;
-    PANIC;
-}
 
 Machine :: enum u32 {
     SERVER;
@@ -17,7 +10,6 @@ Machine :: enum u32 {
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * global constants 
  */
-DebugMode :: true;
 
 address :: "127.0.0.1";
 
@@ -32,23 +24,6 @@ max_header_size :: 8190;
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * functions
  */
-log :: (type: LogType, msg: string, args: ..Any) {
-    if type == {
-    case .DEBUG;  if !DebugMode {return;}; 
-                   print("DEBUG:   ");
-    case .INFO;    print("INFO:    ");
-    case .ERROR;   print("ERROR:   ");
-    case .WARNING; print("WARNING: ");
-    case .PANIC;   print("PANIC:   ");
-    }
-    print(msg, ..args);
-    print("\n");
-}
-
-panic :: (msg: string, args: ..Any) {
-    log(.PANIC, msg, ..args); 
-    exit(1);
-}
 
 // return socket or panic if fail
 connect :: (to: Machine) -> Socket {
@@ -86,14 +61,14 @@ connect :: (to: Machine) -> Socket {
 }
 
 send :: (s: Socket, msg: string) {
-    buf := sprint("GET / HTTP/1.1\r\nHost: 127.0.0.1:6969\r\nConnection: close\r\nContent-Length: %\r\nContent-Type: text/plain\r\n\r\n%", msg.count, msg);
+    buf := sprint("Content-Length: %\r\n\r\n%", msg.count, msg);
     w := send(s, buf.data, xx (buf.count+1), .OOB);
     if w < 0 {
         log(.ERROR, "Could not send data (%)\n", w);
     }
 }
 
-// read_from_client :: (s: Socket, sb: String_Builder) -> string {
+// Allocates memory
 read_from_client :: (s: Socket) -> string {
     sb: String_Builder;
     bytes_received: s64;
@@ -112,6 +87,7 @@ read_from_client :: (s: Socket) -> string {
     return builder_to_string(*sb);
 }
 
+// Allocates memory
 read_from_server :: (s: Socket) -> string {
     sb: String_Builder;
     bytes_received: s64;
@@ -140,3 +116,5 @@ parse_http_head_value :: (header: string, prop: string) -> string{
     str_num.count = end - start;
     return to_string(str_num.data);
 }
+
+#import "Log";

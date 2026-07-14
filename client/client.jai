@@ -1,15 +1,15 @@
 main :: () {
     s: = connect(.CLIENT);
-    log(.INFO, "Connected to %:%", address, port);
+    Log.info("Connected to %:%", address, port);
     defer close(s);
 
     send(s, "Hello from CLIENT!");
 
-    log(.INFO, "Reading response from server...");
+    Log.info("Reading response from server...");
     data := read_from_server(s);
+    defer free(data);
     body := parse_response_data(data);
-    defer free(body);
-    log(.DEBUG, "Body: %", body);
+    Log.debug("Body: %", body);
 }
 
 
@@ -17,5 +17,6 @@ main :: () {
 #import "String";
 #import "Socket";
 #import "POSIX";
+Log :: #import "Log";
 
 #load "../common/common.jai";
