@@ -123,3 +123,7 @@ parse_http_head_value :: (header: string, prop: string) -> string{
 // TODO: At compile time, check if Log module does not exist and replace with print statements
 //       so this can be used as an independent module.
 #import "Log";
+
+#import "Socket";
+#import "Basic";
+#import "String";

@@ -1,6 +1,6 @@
 main :: () {
     ok, s: = connect(.CLIENT);
-    defer close(s);
+    defer Posix.close(s);
     if !ok {
         Log.panic("Could not connect to server");
     }
@@ -18,11 +18,7 @@ main :: () {
     Log.debug("Body: %", body);
 }
 
-
-#import "Basic";
-#import "String";
-#import "Socket";
-#import "POSIX";
-Log :: #import "Log";
+Posix :: #import "POSIX";
+Log   :: #import "Log";
 
 #load "../common/common.jai";
