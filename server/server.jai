@@ -1,15 +1,19 @@
 buffer_size :: 1024;
 
 main :: () {
-    ok, s := Connect.open(.SERVER);
+    ok, s := Connect.open(address, port);
     defer Connect.close(s);
     if !ok {
         Log.panic("Could not connect to server");
     }
+    ok = Connect.listen(s);
 
     Log.info("Listening to %:%...", address, port);
     while true {
-        client_fd, sock_addr := Connect.accept(s); 
+        ok, client_fd, sock_addr := Connect.accept(s); 
+        if !ok {
+            Log.panic("Could not accept connection to server");
+        }
         // Log.debug("client % request from % begun", client_fd, to_string(sock_addr));
         
         // wait until client sends a message
@@ -20,7 +24,7 @@ main :: () {
         Log.debug("Body: %", body);
         
         // send response
-        ok := Connect.send(client_fd, "Hello from http server");
+        ok = Connect.send(client_fd, "Hello from http server");
         if !ok {
             Log.error("Could not send data");
         }
@@ -36,4 +40,4 @@ main :: () {
 Log     :: #import "Log";
 Connect :: #import "Connection";
 
-#load "../common/common.jai";
+#load "../globals.jai";

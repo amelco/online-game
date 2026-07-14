@@ -1,10 +1,4 @@
-Machine :: enum u32 {
-    SERVER;
-    CLIENT;
-}
-
 address :: "127.0.0.1";
-
 port : u16 : 6969;
 
 // This is the maximum size for the http header. This value is the same as the default value

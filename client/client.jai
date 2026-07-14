@@ -1,9 +1,15 @@
 main :: () {
-    ok, s: = Connect.open(.CLIENT);
+    ok, s: = Connect.open(address, port);
     defer Connect.close(s);
     if !ok {
         Log.panic("Could not connect to server");
     }
+
+    ok = Connect.connect(s);
+    if !ok {
+        Log.panic("Could not connect to server");
+    }
+    
     Log.info("Connected to %:%", address, port);
 
     ok = Connect.send(s, "Hello from CLIENT!");
@@ -18,9 +24,12 @@ main :: () {
     Log.debug("Body: %", body);
 }
 
+connect_to_server :: () {
+}
+
 #import "Basic";
 
 Log      :: #import "Log";
 Connect  :: #import "Connection";
 
-#load "../common/common.jai";
+#load "../globals.jai";

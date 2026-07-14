@@ -1,4 +1,6 @@
-open :: (to: Machine) -> ok: bool, s: Socket {
+address_: string;
+port_: s64;
+open :: (address: string, port: s64) -> ok: bool, s: Socket {
     if !socket_init() { // needed by Windows
         Log.debug("Could not initialize socket");
         return false, -1;
@@ -9,41 +11,41 @@ open :: (to: Machine) -> ok: bool, s: Socket {
         Log.debug("Could not initialize socket (%).", s);
         return false, s;
     }
-
-    if to == .SERVER {
-        b := bind(s, address, port, AF_INET);
-        if b < 0 {
-            Log.debug("Could not bind adress to socket (%).", b);
-            return false, b;
-        }
-        
-        l := listen(s, 10); 
-        if l < 0 {
-            Log.debug("Could not listen to socket (%).", l);
-            return false, l;
-        }
-    }
-    else if to == .CLIENT {
-        sa: sockaddr_in;
-        sa.sin_family = AF_INET;
-        c_address := to_c_string(address);
-        defer free(c_address);
-        addr := inet_addr(c_address);
-        #if OS == .WINDOWS {
-            sa.sin_addr.S_un.S_addr = addr;
-        } else {
-            sa.sin_addr.s_addr = addr;
-        }
-        sa.sin_port = htons(port);
-
-        c := connect(s, cast(*sockaddr)*sa, size_of(type_of(sa)));
-        if c < 0 Log.panic("Could not connect (%).\n", c);
-    }
-    else {
-        Log.debug("Could not connect to machine. It must be client or server.");
-        return false, -1;
-    }
+    address_ = address;
+    port_ = port;
     return true, s;
+}
+
+listen :: (s: Socket) -> ok: bool {
+    b := bind(s, address_, xx port_, AF_INET);
+    if b < 0 {
+        Log.debug("Could not bind adress to socket (%).", b);
+        return false;
+    }
+    
+    l := listen(s, 10); 
+    if l < 0 {
+        Log.debug("Could not listen to socket (%).", l);
+        return false;
+    }
+    return true;
+}
+
+connect :: (s: Socket) -> ok: bool {
+    sa: sockaddr_in;
+    sa.sin_family = AF_INET;
+    c_address := to_c_string(address_);
+    defer free(c_address);
+    addr := inet_addr(c_address);
+    #if OS == .WINDOWS {
+        sa.sin_addr.S_un.S_addr = addr;
+    } else {
+        sa.sin_addr.s_addr = addr;
+    }
+    sa.sin_port = htons(xx port_);
+
+    c := connect(s, cast(*sockaddr)*sa, size_of(type_of(sa)));
+    return c >= 0;
 }
 
 send :: (s: Socket, msg: string) -> ok: bool{
@@ -53,6 +55,7 @@ send :: (s: Socket, msg: string) -> ok: bool{
 }
 
 // Allocates memory
+max_header_size :: 8190;
 read :: (s: Socket) -> string {
     sb: String_Builder;
     bytes_received: s64;
@@ -88,11 +91,11 @@ parse_http_head_value :: (header: string, prop: string) -> string{
     return to_string(str_num.data);
 }
 
-accept :: (s: Socket) -> Socket, sockaddr_in {
+accept :: (s: Socket) -> ok: bool, Socket, sockaddr_in {
     addr: sockaddr_in;
     addrlen: u32 = size_of(sockaddr_in);
     fd := accept(s, cast(*sockaddr)*addr, xx *addrlen);
-    return fd, addr;
+    return fd > 0, fd, addr;
 }
 
 close :: (s: Socket) {
@@ -105,5 +108,3 @@ Posix :: #import "POSIX";
 #import "Socket";
 #import "Basic";
 #import "String";
-
-#load "../common/common.jai";
