@@ -60,12 +60,10 @@ connect :: (to: Machine) -> Socket {
     return s;
 }
 
-send :: (s: Socket, msg: string) {
+send :: (s: Socket, msg: string) -> ok: bool{
     buf := sprint("Content-Length: %\r\n\r\n%", msg.count, msg);
     w := send(s, buf.data, xx (buf.count+1), .OOB);
-    if w < 0 {
-        log(.ERROR, "Could not send data (%)\n", w);
-    }
+    return w > 0;
 }
 
 // Allocates memory

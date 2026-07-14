@@ -3,7 +3,10 @@ main :: () {
     Log.info("Connected to %:%", address, port);
     defer close(s);
 
-    send(s, "Hello from CLIENT!");
+    ok := send(s, "Hello from CLIENT!");
+    if !ok {
+        Log.panic("Could not send data");
+    }
 
     Log.info("Reading response from server...");
     data := read_from_server(s);

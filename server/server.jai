@@ -7,7 +7,7 @@ main :: () {
 
     while true {
         client_fd, sock_addr := accept(s); 
-        Log.debug("client % connected from %", client_fd, to_string(sock_addr));
+        Log.debug("client % request from % begun", client_fd, to_string(sock_addr));
         
         // wait until client sends a message
         Log.info("Reading data from client...");
@@ -17,8 +17,12 @@ main :: () {
         Log.debug("Body: %", body);
         
         // send response
-        send(client_fd, "Hello from http server");
+        ok := send(client_fd, "Hello from http server");
+        if !ok {
+            log(.ERROR, "Could not send data");
+        }
 
+        Log.debug("client % request from % ended", client_fd, to_string(sock_addr));
         close(client_fd);
     }
 }
